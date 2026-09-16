@@ -24,6 +24,8 @@ public class Catalogo {
     @Enumerated(EnumType.STRING)
     private Tipo tipo;
 
+    private String descripcion;
+
     @Enumerated(EnumType.STRING)
     private Estado estado;
 
