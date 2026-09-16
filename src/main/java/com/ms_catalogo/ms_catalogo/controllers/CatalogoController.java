@@ -1,9 +1,8 @@
 package com.ms_catalogo.ms_catalogo.controllers;
 
 import com.ms_catalogo.ms_catalogo.entities.Catalogo;
-import com.ms_catalogo.ms_catalogo.entities.Estado;
 import com.ms_catalogo.ms_catalogo.entities.Tipo;
-import com.ms_catalogo.ms_catalogo.repositories.CatalogoRepository;
+import com.ms_catalogo.ms_catalogo.services.CatalogoService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,66 +13,55 @@ import java.util.List;
 @RequestMapping("/api/catalog/resources")
 public class CatalogoController {
 
-    private final CatalogoRepository catalogoRepository;
+    private final CatalogoService catalogoService;
 
-    public CatalogoController(CatalogoRepository catalogoRepository) {
-        this.catalogoRepository = catalogoRepository;
+    public CatalogoController(CatalogoService catalogoService) {
+        this.catalogoService = catalogoService;
     }
 
     @GetMapping
     public ResponseEntity<List<Catalogo>> listarRecursos(@RequestParam(required = false) Tipo tipo) {
         if (tipo != null) {
-            List<Catalogo> filtrados = catalogoRepository.findAll().stream()
-                    .filter(c -> c.getTipo() == tipo)
-                    .toList();
-            return ResponseEntity.ok(filtrados);
+            return ResponseEntity.ok(catalogoService.obtenerPorTipo(tipo));
         }
-        return ResponseEntity.ok(catalogoRepository.findAll());
+        return ResponseEntity.ok(catalogoService.obtenerTodos());
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<Catalogo> obtenerPorId(@PathVariable Long id) {
-        return catalogoRepository.findById(id)
+        return catalogoService.obtenerPorId(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @PostMapping
     public ResponseEntity<Catalogo> crearRecurso(@RequestBody Catalogo catalogo) {
-        Catalogo nuevo = catalogoRepository.save(catalogo);
+        Catalogo nuevo = catalogoService.crearRecurso(catalogo);
         return ResponseEntity.status(HttpStatus.CREATED).body(nuevo);
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<Catalogo> actualizarRecurso(@PathVariable Long id, @RequestBody Catalogo detalles) {
-        return catalogoRepository.findById(id).map(existente -> {
-            existente.setNombre(detalles.getNombre());
-            existente.setTipo(detalles.getTipo());
-            existente.setDescripcion(detalles.getDescripcion());
-            existente.setEstado(detalles.getEstado());
-            existente.setStock(detalles.getStock());
-            existente.setStockDisponible(detalles.getStockDisponible());
-            Catalogo actualizado = catalogoRepository.save(existente);
-            return ResponseEntity.ok(actualizado);
-        }).orElse(ResponseEntity.notFound().build());
+        return catalogoService.actualizarRecurso(id, detalles)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
-    @PatchMapping("/{id}/stock")
-    public ResponseEntity<Catalogo> actualizarStock(@PathVariable Long id, @RequestParam Integer nuevoStockDisponible) {
-        return catalogoRepository.findById(id).map(existente -> {
-            existente.setStockDisponible(nuevoStockDisponible);
-            if (nuevoStockDisponible <= 0) {
-                existente.setEstado(Estado.NO_DISPONIBLE);
-            }
-            Catalogo actualizado = catalogoRepository.save(existente);
+    @PostMapping("/{id}/reducir-stock")
+    public ResponseEntity<?> reducirStock(@PathVariable Long id, @RequestParam(defaultValue = "1") Integer cantidad) {
+        try {
+            Catalogo actualizado = catalogoService.reducirStock(id, cantidad);
             return ResponseEntity.ok(actualizado);
-        }).orElse(ResponseEntity.notFound().build());
+        } catch (IllegalStateException | IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminarRecurso(@PathVariable Long id) {
-        if (catalogoRepository.existsById(id)) {
-            catalogoRepository.deleteById(id);
+        if (catalogoService.eliminarRecurso(id)) {
             return ResponseEntity.noContent().build();
         }
         return ResponseEntity.notFound().build();
