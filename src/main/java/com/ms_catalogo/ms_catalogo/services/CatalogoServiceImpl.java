@@ -92,4 +92,12 @@ public class CatalogoServiceImpl implements CatalogoService {
         }
         return false;
     }
+
+    @Override
+    public List<Catalogo> obtenerRecursos(Tipo tipo) {
+        if (tipo != null) {
+            return catalogoRepository.findByTipo(tipo);
+        }
+        return catalogoRepository.findAll();
+    }
 }

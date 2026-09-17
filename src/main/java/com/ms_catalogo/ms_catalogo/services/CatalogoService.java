@@ -21,4 +21,6 @@ public interface CatalogoService {
     Catalogo reducirStock(Long id, Integer cantidad);
 
     boolean eliminarRecurso(Long id);
+    
+    List<Catalogo> obtenerRecursos(Tipo tipo);
 }
